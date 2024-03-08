@@ -20,19 +20,12 @@ task default -depends build
 task build -depends build-llvm, build-rasqal, test-rasqal
 task check -depends check-licenses
 task format -depends format-rust
-task all -depends build, check, format
 
 task format-rust {
     Invoke-LoggedCommand -workingDirectory $Root {
         cargo fmt --all
     }
 }
-
-# task clippy {
-#     Invoke-LoggedCommand -workingDirectory $Root {
-#         cargo clippy --fix -- --no-deps
-#     }
-# }
 
 task build-llvm -depends init {
     Invoke-LoggedCommand -workingDirectory $BuildLlvm { cargo test --release @(Get-CargoArgs) }
@@ -51,13 +44,24 @@ task build-rasqal -depends init {
 
     $env:MATURIN_PEP517_ARGS = (Get-CargoArgs) -Join " "
     Get-Wheels rasqal | Remove-Item -Verbose
-    Invoke-LoggedCommand { pip --verbose wheel --no-deps --wheel-dir $Wheels $Rasqal }
+    Invoke-LoggedCommand -workingDirectory $Rasqal {
+        maturin build --release
+    }
 
-    if (Test-CommandExists auditwheel) {
+     if ($env:RSQL_MANYLINUX -eq $true) {
         $unauditedWheels = Get-Wheels rasqal
-        Invoke-LoggedCommand { auditwheel repair --wheel-dir $Wheels $unauditedWheels }
+        Invoke-LoggedCommand -workingDirectory $Root {
+            pip install auditwheel
+            auditwheel repair --wheel-dir $Wheels $unauditedWheels
+         }
         $unauditedWheels | Remove-Item
     }
+}
+
+task test-rasqal {
+#     Invoke-LoggedCommand -workingDirectory $Rasqal {
+#         cargo test --release @(Get-CargoArgs)
+#     }
 
     # Force reinstall the package if it exists, but not its dependencies.
     $packages = Get-Wheels rasqal
@@ -65,12 +69,6 @@ task build-rasqal -depends init {
         pip install $packages
         pip install --force-reinstall --no-deps $packages
     }
-}
-
-task test-rasqal -depends build-rasqal {
-#     Invoke-LoggedCommand -workingDirectory $Rasqal {
-#         cargo test --release @(Get-CargoArgs)
-#     }
 
     Invoke-LoggedCommand -workingDirectory $Root {
         pip install pytest
