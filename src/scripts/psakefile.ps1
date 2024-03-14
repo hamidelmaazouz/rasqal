@@ -13,6 +13,7 @@ Properties {
     $Wheels = Join-Path $Target wheels
     $CargoConfigToml = Join-Path $Root .cargo config.toml
     $RustVersion = "1.64.0"
+    $AuditWheelTag = "manylinux_2_31_x86_64"
     $Python = Resolve-Python
 }
 
@@ -44,16 +45,15 @@ task build-rasqal -depends init {
 
     $env:MATURIN_PEP517_ARGS = (Get-CargoArgs) -Join " "
     Get-Wheels rasqal | Remove-Item -Verbose
-    Invoke-LoggedCommand -workingDirectory $Rasqal {
-        maturin build --release
-    }
+    Invoke-LoggedCommand { pip --verbose wheel --no-deps --wheel-dir $Wheels $Rasqal }
 
-     if ($env:RSQL_MANYLINUX -eq $true) {
+    if ($IsLinux) {
+        Invoke-LoggedCommand { & $Python -m pip install auditwheel patchelf }
+    }
+     if (Test-CommandExists auditwheel) {
         $unauditedWheels = Get-Wheels rasqal
-        Invoke-LoggedCommand -workingDirectory $Root {
-            pip install auditwheel
-            auditwheel repair --wheel-dir $Wheels $unauditedWheels
-         }
+        Invoke-LoggedCommand { auditwheel show $unauditedWheels }
+        Invoke-LoggedCommand { auditwheel repair --wheel-dir $Wheels --plat $AuditWheelTag $unauditedWheels }
         $unauditedWheels | Remove-Item
     }
 }
