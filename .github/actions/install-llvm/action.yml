@@ -36,10 +36,10 @@ runs:
         choco uninstall -y llvm
       shell: pwsh
       if: ${{ (inputs.os == 'windows-2019') && (steps.cache-llvm.outputs.cache-hit != 'true') }}
-    - name: MacOS - Install build dependencies, ninja
-      run: brew install ninja
+    - name: MacOS - Install build dependencies, ccache, ninja
+      run: brew install ccache ninja
       shell: pwsh
-      if: ${{ (inputs.os == 'macos-11') && (steps.cache-llvm.outputs.cache-hit != 'true') }}
+      if: ${{ matrix.config.os == 'macos-14' }}
 
     - name: Configure long paths
       run: git config --global core.longpaths true

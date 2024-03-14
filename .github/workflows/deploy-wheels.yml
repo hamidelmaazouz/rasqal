@@ -18,18 +18,18 @@ jobs:
 #            target: "default",
 #            env: { },
 #          }
-          - {
-            os: "windows-2019",
-            arch: "amd64",
-            target: "default",
-            env: { },
-          }
 #          - {
-#            os: "macos-14",
-#            arch: "aarch64",
+#            os: "windows-2019",
+#            arch: "amd64",
 #            target: "default",
 #            env: { },
 #          }
+          - {
+            os: "macos-14",
+            arch: "arm64",
+            target: "default",
+            env: { },
+          }
     steps:
       - uses: actions/checkout@v4
       - name: Setup rust toolchain
@@ -38,9 +38,10 @@ jobs:
           toolchain: 1.75.0
           components: rustfmt clippy
       - name: Set up Python 3.9
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v3
         with:
           python-version: 3.9
+        if: ${{ matrix.config.os != 'macos-14' }}
       - name: Install LLVM
         uses: ./.github/actions/install-llvm
         with:
