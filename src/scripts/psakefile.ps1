@@ -21,6 +21,7 @@ task default -depends build
 task build -depends build-llvm, build-rasqal, test-rasqal
 task check -depends check-licenses
 task format -depends format-rust
+task pypi-build -depends build, audit-rasqal, check
 
 task format-rust {
     Invoke-LoggedCommand -workingDirectory $Root {
@@ -38,23 +39,20 @@ task build-rasqal -depends init {
     Copy-Item -Path (Join-Path $ProjectRoot README.md) -Destination $Rasqal -force
     Copy-Item -Path (Join-Path $ProjectRoot LICENSE) -Destination $Rasqal -force
 
-    $cargoArgs = (Get-CargoArgs)
-    if ($env:RSQL_MANYLINUX -eq $true) {
-        $cargoArgs += "--manylinux"
-    }
-
     $env:MATURIN_PEP517_ARGS = (Get-CargoArgs) -Join " "
     Get-Wheels rasqal | Remove-Item -Verbose
     Invoke-LoggedCommand { pip --verbose wheel --no-deps --wheel-dir $Wheels $Rasqal }
+}
 
+task audit-rasqal -depends build-rasqal {
     if ($IsLinux) {
         Invoke-LoggedCommand { & $Python -m pip install auditwheel patchelf }
     }
-     if (Test-CommandExists auditwheel) {
-        $unauditedWheels = Get-Wheels rasqal
-        Invoke-LoggedCommand { auditwheel show $unauditedWheels }
-        Invoke-LoggedCommand { auditwheel repair --wheel-dir $Wheels --plat $AuditWheelTag $unauditedWheels }
-        $unauditedWheels | Remove-Item
+    if (Test-CommandExists auditwheel) {
+       $unauditedWheels = Get-Wheels rasqal
+       Invoke-LoggedCommand { auditwheel show $unauditedWheels }
+       Invoke-LoggedCommand { auditwheel repair --wheel-dir $Wheels --plat $AuditWheelTag $unauditedWheels }
+       $unauditedWheels | Remove-Item
     }
 }
 
@@ -163,9 +161,21 @@ task check-licenses {
         cargo deny check licenses
     }
 
+    # patchelf is only pulled in for linux wheel patching, not directly referenced.
     Invoke-LoggedCommand -wd $Root {
         pip install pip-licenses
-        pip-licenses --allow-only="BSD License;Apache Software License;MIT License;MIT No Attribution License (MIT-0);BSD-3-Clause;Mozilla Public License 2.0 (MPL 2.0);MIT OR Apache-2.0;MIT"
+        pip-licenses --ignore-packages patchelf --allow-only="
+        BSD;
+        BSD License;
+        BSD-3-Clause;
+        Mozilla Public License 2.0 (MPL 2.0);
+        Python Software Foundation License;
+        Apache Software License;
+        MIT License;
+        MIT No Attribution License (MIT-0);
+        MIT OR Apache-2.0;
+        MIT;
+        Public domain"
     }
 }
 

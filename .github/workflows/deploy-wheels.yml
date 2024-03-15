@@ -12,22 +12,22 @@ jobs:
       fail-fast: false
       matrix:
         config:
-#          - {
-#            os: "ubuntu-20.04",
-#            arch: "amd64",
-#            target: "default",
-#            env: { },
-#          }
-#          - {
-#            os: "windows-2019",
-#            arch: "amd64",
-#            target: "default",
-#            env: { },
-#          }
+          - {
+            os: "ubuntu-20.04",
+            arch: "amd64",
+            target: "pypi-build",
+            env: { },
+          }
+          - {
+            os: "windows-2019",
+            arch: "amd64",
+            target: "pypi-build",
+            env: { },
+          }
           - {
             os: "macos-14",
             arch: "arm64",
-            target: "default",
+            target: "pypi-build",
             env: { },
           }
     steps:
